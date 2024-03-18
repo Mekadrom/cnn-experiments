@@ -1,0 +1,35 @@
+# Python
+*.pyc
+*.pyo
+__pycache__/
+
+# PyTorch
+*.pth
+*.pt
+
+# Virtual environment
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# Compiled files
+*.pyd
+*.so
+*.dll
+
+# Logs
+*.log
+
+# Data and models
+data/
+models/
+runs/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Miscellaneous
+.DS_Store
