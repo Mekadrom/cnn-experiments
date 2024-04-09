@@ -3,7 +3,7 @@ import torch.nn as nn
 
 sys.path.append("..")
 
-import utils
+import nn_utils
 
 def apply_residual_block(x, conv_block):
     residual = x
@@ -21,7 +21,7 @@ class CNNClassifier(nn.Module):
 
         self.args = args
 
-        self.activation_function = utils.create_activation_function(args.activation_function)
+        self.activation_function = nn_utils.create_activation_function(args.activation_function)
 
         def create_conv_block(in_channels, out_channels, kernel_size=4, stride=2, padding=1, batch_norm=True):
             return nn.Sequential(*[

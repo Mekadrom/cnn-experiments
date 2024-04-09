@@ -13,7 +13,7 @@ import torchvision.transforms as transforms
 
 sys.path.append("..")
 
-import utils
+import nn_utils
 
 def pad_to_size(target_size):
     def pad(img):
@@ -130,7 +130,7 @@ if __name__ == '__main__':
     for epoch in range(args.n_epochs):
         classifier_regressor.train()
         
-        losses = utils.AverageMeter()
+        losses = nn_utils.AverageMeter()
         for i, (img, (class_idx, label)) in enumerate(tqdm(train_loader, desc='Training')):
             img = img.to(args.device)
             class_idx = class_idx.to(args.device).long()
@@ -170,7 +170,7 @@ if __name__ == '__main__':
         classifier_regressor.eval()
 
         with torch.no_grad():
-            losses = utils.AverageMeter()
+            losses = nn_utils.AverageMeter()
             for i, (img, (class_idx, label)) in enumerate(tqdm(val_loader, desc='Validation')):
                 img = img.to(args.device)
                 class_idx = class_idx.to(args.device).long()

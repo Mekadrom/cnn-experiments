@@ -43,13 +43,15 @@ class DataLoader(Dataset):
             # transforms.Lambda(lambda img: print(img.size) or img),
             pad_to_size((768, 1024)),
             transforms.CenterCrop((768, 768)),
-            transforms.Resize((256, 256)),
+            transforms.Resize((224, 224)),
             transforms.Lambda(convert_to_rgb),
             transforms.ToTensor()
         ])
 
+        data_paths = os.listdir(data_path)[:100]
+
         # load images from data_path/split and simply store them as a list of tensors
-        for image in tqdm(os.listdir(data_path), desc=f"Loading {self.split} data"):
+        for image in tqdm(data_paths, desc=f"Loading {self.split} data"):
             if image.endswith(".jpg"):
                 img = Image.open(os.path.join(data_path, image))
                 if img is not None:

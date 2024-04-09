@@ -1,6 +1,6 @@
 from torch.utils.tensorboard import SummaryWriter
 from typing import Optional
-from criteria import LogCoshLoss
+from torchmetrics import LogCoshError
 
 import os
 import random
@@ -25,6 +25,9 @@ class Trainer:
         print(f"number of decoder params: {sum(p.numel() for p in self.vae.decoder.parameters()):,}")
         print(f"total number of model params: {sum(p.numel() for p in self.vae.parameters()):,}")
 
+        print(f"hi cindy: {self.vae.encoder.latent[0].weight.shape}")
+        print(f"hi cindy: {self.vae.encoder.latent[0].bias.shape}")
+
         self.vae_criterion: Optional[nn.Module] = None
         if args.criterion == 'bce':
             self.vae_criterion = nn.BCEWithLogitsLoss(reduction=args.criterion_reduction)
@@ -33,7 +36,7 @@ class Trainer:
         elif args.criterion == 'se':
             self.vae_criterion = nn.SmoothL1Loss(reduction=args.criterion_reduction)
         elif args.criterion == 'log_cosh':
-            self.vae_criterion = LogCoshLoss()
+            self.vae_criterion = LogCoshError()
         elif args.criterion == 'l1':
             self.vae_criterion = nn.L1Loss(reduction=args.criterion_reduction)
         else:

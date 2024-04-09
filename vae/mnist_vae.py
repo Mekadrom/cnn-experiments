@@ -1,7 +1,12 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import vae.utils as utils
+import os
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+import nn_utils
 
 class MaxAvgPool(nn.Module):
     def __init__(self):
@@ -20,7 +25,7 @@ class Encoder(nn.Module):
     def __init__(self, activation_function, latent_size, dropout):
         super(Encoder, self).__init__()
 
-        self.activation_function = utils.create_activation_function(activation_function)
+        self.activation_function = nn_utils.create_activation_function(activation_function)
 
         # self.pooling_layer = nn.MaxPool2d(kernel_size=2, stride=2)
         self.pooling_layer = MaxAvgPool()
@@ -56,7 +61,7 @@ class Decoder(nn.Module):
     def __init__(self, activation_function, latent_size, dropout):
         super(Decoder, self).__init__()
 
-        self.activation_function = utils.create_activation_function(activation_function)
+        self.activation_function = nn_utils.create_activation_function(activation_function)
 
         def deconv_block(in_channels, out_channels, stride=2, padding=1, output_padding=0):
             return nn.Sequential(

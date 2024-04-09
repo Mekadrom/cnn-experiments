@@ -16,22 +16,25 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
         
-def create_activation_function(activation_function_name):
+def get_activation_function_class(activation_function_name):
     if activation_function_name == 'relu':
-        return nn.ReLU()
+        return nn.ReLU
     elif activation_function_name == 'gelu':
-        return nn.GELU()
+        return nn.GELU
     elif activation_function_name == 'elu':
-        return nn.ELU()
+        return nn.ELU
     elif activation_function_name == 'selu':
-        return nn.SELU()
+        return nn.SELU
     elif activation_function_name == 'prelu':
-        return nn.PReLU()
+        return nn.PReLU
     elif activation_function_name == 'leaky_relu':
-        return nn.LeakyReLU()
+        return nn.LeakyReLU
     elif activation_function_name == 'tanh':
-        return nn.Tanh()
+        return nn.Tanh
     elif activation_function_name == 'sigmoid':
-        return nn.Sigmoid()
+        return nn.Sigmoid
     else:
         raise Exception(f"Unknown activation function {activation_function_name}")
+    
+def create_activation_function(activation_function_name):
+    return get_activation_function_class(activation_function_name)()
