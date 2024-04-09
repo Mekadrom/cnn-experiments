@@ -21,7 +21,7 @@ def pad_to_size(target_size):
         pad_width = target_size[1] - width
         pad_height = target_size[0] - height
         padding = (pad_width // 2, pad_height // 2, (pad_width + 1) // 2, (pad_height + 1) // 2)
-        return torchvision.transforms.functional.pad(img, padding, fill=0, padding_mode='constant'), max(0, pad_width // 2), max(pad_height // 2, 0)
+        return torchvision.transforms.functional.pad(img, padding, fill=0, padding_mode='constant'), pad_width // 2, pad_height // 2
     return pad
 
 transform = transforms.Compose([
@@ -53,6 +53,9 @@ def load_split(data_path, split, img_file_names):
             img = Image.open(os.path.join(data_path, split, img_file_name))
 
             img, pad_width, pad_height = pad_to_size((768, 1024))(img)
+
+            pad_height = min(768, max(0, pad_height))
+            pad_width = min(1024, max(0, pad_width))
 
             label_x1 += pad_width
             label_y1 += pad_height

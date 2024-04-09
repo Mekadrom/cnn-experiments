@@ -23,7 +23,7 @@ class CNNClassifier(nn.Module):
 
         self.activation_function = nn_utils.create_activation_function(args.activation_function)
 
-        def create_conv_block(in_channels, out_channels, kernel_size=4, stride=2, padding=1, batch_norm=True):
+        def create_conv_block(in_channels, out_channels, kernel_size=3, stride=1, padding=1, batch_norm=True):
             return nn.Sequential(*[
                 nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding),
                 self.activation_function,
@@ -32,29 +32,24 @@ class CNNClassifier(nn.Module):
             ])
 
         self.initial_conv = nn.Sequential(
-            create_conv_block(3, 16, kernel_size=7, stride=1, padding=(7-1)//2), # 192x256 -> 192x256
+            create_conv_block(3, 64, kernel_size=7, stride=1, padding=(7-1)//2), # 192x256 -> 192x256
             nn.MaxPool2d(kernel_size=2, stride=2), # 192x256 -> 96x128
         )
 
         self.convs = nn.ModuleList([
-            nn.ModuleList([create_conv_block(16, 16, kernel_size=3, stride=1, padding=(3-1)//2) for _ in range(6)]), # 96x128 -> 96x128
-            create_conv_block(16, 32), # 96x128 -> 48x64
-            nn.ModuleList([create_conv_block(32, 32, kernel_size=3, stride=1, padding=(3-1)//2) for _ in range(7)]), # 48x64 -> 48x64
-            create_conv_block(32, 64), # 48x64 -> 24x32
-            nn.ModuleList([create_conv_block(64, 64, kernel_size=3, stride=1, padding=(3-1)//2) for _ in range(11)]), # 24x32 -> 24x32
-            create_conv_block(64, 128), # 24x32 -> 12x16
-            nn.ModuleList([create_conv_block(128, 128, kernel_size=3, stride=1, padding=(3-1)//2) for _ in range(7)]), # 12x16 -> 12x16
-            create_conv_block(128, 256), # 12x16 -> 6x8
-            nn.ModuleList([create_conv_block(256, 256, kernel_size=3, stride=1, padding=(3-1)//2) for _ in range(6)]), # 6x8 -> 6x8
-            create_conv_block(256, 512), # 6x8 -> 3x4
-            nn.ModuleList([create_conv_block(512, 512, kernel_size=3, stride=1, padding=(3-1)//2) for _ in range(5)]), # 3x4 -> 3x4
+            nn.ModuleList([create_conv_block(64, 64, kernel_size=3, stride=1, padding=(3-1)//2) for _ in range(6)]), # 96x128 -> 96x128
+            create_conv_block(64, 128, pooling=True), # 96x128 -> 48x64
+            nn.ModuleList([create_conv_block(128, 128, kernel_size=3, stride=1, padding=(3-1)//2) for _ in range(7)]), # 48x64 -> 48x64
+            create_conv_block(128, 256, pooling=True), # 48x64 -> 24x32
+            nn.ModuleList([create_conv_block(256, 256, kernel_size=3, stride=1, padding=(3-1)//2) for _ in range(11)]), # 24x32 -> 24x32
+            create_conv_block(256, 512, pooling=True), # 24x32 -> 12x16
+            nn.ModuleList([create_conv_block(512, 512, kernel_size=3, stride=1, padding=(3-1)//2) for _ in range(5)]), # 12x16 -> 12x16
         ])
 
-        self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
+        self.avg_pool = nn.AdaptiveAvgPool2d((2, 2))
 
-        flatten_dim = 512 * 1 * 1
+        flatten_dim = 512 * 2 * 2
         interp1 = flatten_dim // 2
-        interp2 = interp1
 
         self.flatten = nn.Flatten()
 
@@ -63,19 +58,15 @@ class CNNClassifier(nn.Module):
             self.activation_function,
             nn.LayerNorm(interp1),
             nn.Dropout(args.dropout),
-            nn.Linear(interp1, interp2),
-            self.activation_function,
-            nn.LayerNorm(interp2),
-            nn.Dropout(args.dropout),
         )
 
         self.classifier = nn.Sequential(
-            nn.Linear(interp2, num_classes),
+            nn.Linear(interp1, num_classes),
             nn.Softmax(dim=1)
         )
 
         self.box_regressor = nn.Sequential(
-            nn.Linear(interp2, 4),
+            nn.Linear(interp1, 4),
             nn.Sigmoid()
         )
 
