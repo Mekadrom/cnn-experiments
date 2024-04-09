@@ -15,59 +15,38 @@ sys.path.append("..")
 
 import nn_utils
 
-def pad_to_size(target_size):
-    def pad(img):
-        width, height = img.size
-        pad_width = target_size[1] - width
-        pad_height = target_size[0] - height
-        padding = (pad_width // 2, pad_height // 2, (pad_width + 1) // 2, (pad_height + 1) // 2)
-        return torchvision.transforms.functional.pad(img, padding, fill=0, padding_mode='constant'), pad_width // 2, pad_height // 2
-    return pad
-
-transform = transforms.Compose([
-    transforms.Resize((192, 256)),
-    # makes sure img is RGB
-    transforms.Lambda(lambda img: img.convert('RGB')),
-    transforms.ToTensor(),
-])
-
 class_names = set()
 
-def load_split(data_path, split, img_file_names):
+with open(os.path.join('..', 'classes.txt'), 'r') as f:
+    class_names = [x.strip() for x in f.readlines()]
+
+def load_split(data_path, split):
+    global class_names
+
+    img_dir = os.path.join(data_path, split)
+    label_dir = os.path.join(data_path, split, 'labels')
+
+    img_file_names = [x for x in os.listdir(img_dir) if x.endswith('.jpg')]
+
     data = []
     for img_file_name in tqdm(img_file_names, desc=f"Loading {split} data"):
-        label_file = os.path.join(data_path, split, 'labels', img_file_name.replace('.jpg', '.txt'))
+        label_file = os.path.join(label_dir, img_file_name.replace('.jpg', '.txt'))
         with open(label_file, 'r') as f:
             # read only first line
             label = f.readline().strip()
-            # label line consists of (class, x1, y1, x1, y1); the bounding box needs to be scaled down by 4x
-            label = label.split(' ')
-            class_name = label[0]
-            class_names.add(class_name)
+            # label line consists of (class_id, x1, y1, x1, y1)
+            label = label.split(',')
 
+            class_id = int(label[0])
             label_x1 = float(label[1])
             label_y1 = float(label[2])
             label_x2 = float(label[3])
             label_y2 = float(label[4])
 
-            img = Image.open(os.path.join(data_path, split, img_file_name))
+            img = Image.open(os.path.join(img_dir, img_file_name))
+            img = transforms.ToTensor()(img)
 
-            img, pad_width, pad_height = pad_to_size((768, 1024))(img)
-
-            pad_height = min(768, max(0, pad_height))
-            pad_width = min(1024, max(0, pad_width))
-
-            label_x1 += pad_width
-            label_y1 += pad_height
-            label_x2 += pad_width
-            label_y2 += pad_height
-
-            img = transform(img)
-
-            label = (torch.FloatTensor([label_x1, label_y1, label_x2, label_y2]) / 4.0) / 256.0
-            label = torch.clamp(label, 0.0, 1.0) # clamp to [0, 1]
-
-            data.append((img, (class_name, label)))
+            data.append((img, (torch.LongTensor(class_id), torch.tensor([label_x1, label_y1, label_x2, label_y2]))))
     return data
 
 fnt = ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", 11)
@@ -75,7 +54,7 @@ fnt = ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", 11)
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
 
-    argparser.add_argument('--data_path', type=str, default=os.path.join('..', 'data', 'multidata'), help='Path to the data')
+    argparser.add_argument('--data_path', type=str, default=os.path.join('..', 'data', 'preprocessed'), help='Path to the data')
     argparser.add_argument('--run_name', type=str, required=True, help='Name of the run')
 
     argparser.add_argument('--n_epochs', type=int, default=2000, help='Number of epochs to train for')
@@ -103,16 +82,8 @@ if __name__ == '__main__':
         torch.manual_seed(args.seed)
         torch.cuda.manual_seed(args.seed)
 
-    train_data_imgs = os.path.join(args.data_path, 'train')
-    val_data_imgs = os.path.join(args.data_path, 'validation')
-
-    train_data_imgs = [x for x in os.listdir(train_data_imgs) if x.endswith('.jpg')]
-    val_data_imgs = [x for x in os.listdir(val_data_imgs) if x.endswith('.jpg')]
-
-    train_data = load_split(args.data_path, 'train', train_data_imgs)
-    val_data = load_split(args.data_path, 'validation', val_data_imgs)
-
-    class_names = list(class_names)
+    train_data = load_split(args.data_path, 'train')
+    val_data = load_split(args.data_path, 'validation')
 
     train_data = [(img, (class_names.index(class_name), label)) for img, (class_name, label) in tqdm(train_data, desc='Processing train data')]
     val_data = [(img, (class_names.index(class_name), label)) for img, (class_name, label) in tqdm(val_data, desc='Processing val data')]
