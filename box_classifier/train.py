@@ -94,7 +94,7 @@ if __name__ == '__main__':
     train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
     val_loader = torch.utils.data.DataLoader(val_data, batch_size=args.batch_size, shuffle=False)
 
-    classifier_regressor = model.CNNClassifier(args, num_classes=len(class_names)).to(args.device)
+    classifier_regressor = model.ResNet34(args, num_classes=len(class_names)).to(args.device)
     optimizer = torch.optim.Adam(classifier_regressor.parameters(), lr=args.lr)
 
     classifier_criterion = torch.nn.CrossEntropyLoss()

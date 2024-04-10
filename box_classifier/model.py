@@ -15,41 +15,50 @@ def apply_residual_block(x, conv_block):
             x = sub_conv_block(x)
     return x
         
-class CNNClassifier(nn.Module):
+class ResNet34(nn.Module):
     def __init__(self, args, num_classes):
-        super(CNNClassifier, self).__init__()
+        super(ResNet34, self).__init__()
 
         self.args = args
 
         self.activation_function = nn_utils.create_activation_function(args.activation_function)
 
-        def create_conv_block(in_channels, out_channels, kernel_size=3, stride=1, padding=1, batch_norm=True):
-            return nn.Sequential(*[
+        def create_conv_block(in_channels, out_channels, kernel_size=3, stride=1, padding=None, batch_norm=True, pooling=False, dropout=True):
+            if padding is None:
+                padding = (kernel_size - 1) // 2
+
+            layers = [
                 nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding),
                 self.activation_function,
                 nn.BatchNorm2d(out_channels) if batch_norm else nn.Identity(),
-                nn.Dropout2d(args.dropout)
-            ])
+                nn.MaxPool2d(kernel_size=2, stride=2) if pooling else nn.Identity(),
+                nn.Dropout(args.dropout) if dropout else nn.Identity()
+            ]
 
-        self.initial_conv = nn.Sequential(
-            create_conv_block(3, 64, kernel_size=7, stride=1, padding=(7-1)//2), # 192x256 -> 192x256
-            nn.MaxPool2d(kernel_size=2, stride=2), # 192x256 -> 96x128
-        )
+            return nn.Sequential(*layers)
 
-        self.convs = nn.ModuleList([
-            nn.ModuleList([create_conv_block(64, 64, kernel_size=3, stride=1, padding=(3-1)//2) for _ in range(6)]), # 96x128 -> 96x128
-            create_conv_block(64, 128, pooling=True), # 96x128 -> 48x64
-            nn.ModuleList([create_conv_block(128, 128, kernel_size=3, stride=1, padding=(3-1)//2) for _ in range(7)]), # 48x64 -> 48x64
-            create_conv_block(128, 256, pooling=True), # 48x64 -> 24x32
-            nn.ModuleList([create_conv_block(256, 256, kernel_size=3, stride=1, padding=(3-1)//2) for _ in range(11)]), # 24x32 -> 24x32
-            create_conv_block(256, 512, pooling=True), # 24x32 -> 12x16
-            nn.ModuleList([create_conv_block(512, 512, kernel_size=3, stride=1, padding=(3-1)//2) for _ in range(5)]), # 12x16 -> 12x16
+        self.initial_conv = nn.Sequential(*[
+            create_conv_block(3, 64, kernel_size=7, stride=2, pooling=False), # 224 -> 112
+            nn.Conv2d(3, 64, 7, 2, (7-1) // 2), # 112 -> 112
+            self.activation_function,
+            nn.BatchNorm2d(64),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1) # 112 -> 56
         ])
 
-        self.avg_pool = nn.AdaptiveAvgPool2d((2, 2))
+        self.convs = nn.ModuleList([
+            nn.ModuleList([create_conv_block(64, 64, kernel_size=3, stride=1, padding=1) for _ in range(3)]), # 56 -> 56
+            create_conv_block(64, 128, stride=2), # 56 -> 28
+            nn.ModuleList([create_conv_block(128, 128, kernel_size=3, stride=1, padding=1) for _ in range(3)]), # 28 -> 28
+            create_conv_block(128, 256, stride=2), # 28 -> 14
+            nn.ModuleList([create_conv_block(256, 256, kernel_size=3, stride=1, padding=1) for _ in range(5)]), # 14 -> 14
+            create_conv_block(256, 512, stride=2), # 14 -> 7
+            nn.ModuleList([create_conv_block(512, 512, kernel_size=3, stride=1, padding=1) for _ in range(2)]), # 7 -> 7
+        ])
 
-        flatten_dim = 512 * 2 * 2
-        interp1 = flatten_dim // 2
+        self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
+
+        flatten_dim = 512 * 1 * 1
+        interp1 = flatten_dim
 
         self.flatten = nn.Flatten()
 

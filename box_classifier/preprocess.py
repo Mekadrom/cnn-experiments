@@ -20,7 +20,7 @@ def pad_to_size(target_size):
     return pad
 
 transform = transforms.Compose([
-    transforms.Resize((192, 256)),
+    transforms.Resize((224, 224)),
     # makes sure img is RGB
     transforms.Lambda(lambda img: img.convert('RGB')),
     transforms.ToTensor(),
@@ -47,9 +47,9 @@ def process_split(data_path, output_data_path, split, img_file_names):
 
             img = Image.open(os.path.join(data_path, split, img_file_name))
 
-            img, pad_width, pad_height = pad_to_size((768, 1024))(img)
+            img, pad_width, pad_height = pad_to_size((1024, 1024))(img)
 
-            pad_height = min(768, max(0, pad_height))
+            pad_height = min(1024, max(0, pad_height))
             pad_width = min(1024, max(0, pad_width))
 
             label_x1 += pad_width
