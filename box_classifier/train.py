@@ -49,7 +49,10 @@ def load_split(data_path, split):
             data.append((img, (torch.LongTensor(class_id), torch.tensor([label_x1, label_y1, label_x2, label_y2]))))
     return data
 
-fnt = ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", 11)
+try:
+    fnt = ImageFont.truetype("Pillow/Tests/fonts/FreeMono.ttf", 11)
+except:
+    fnt = ImageFont.load_default()
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
