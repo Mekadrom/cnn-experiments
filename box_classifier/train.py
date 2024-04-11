@@ -236,9 +236,9 @@ if __name__ == '__main__':
         classifier_regressor.train()
         
         losses = nn_utils.AverageMeter()
-        for i, (img, (class_idx, label)) in enumerate(tqdm(train_loader, desc='Training')):
+        for i, (img, (class_id, label)) in enumerate(tqdm(train_loader, desc='Training')):
             img = img.to(args.device)
-            class_idx = class_idx.to(args.device).long()
+            class_id = class_id.to(args.device).long()
 
             label_x1, label_y1, label_x2, label_y2 = label.split(1, dim=1)
             label_x1 = label_x1.to(args.device).squeeze(1)
@@ -253,7 +253,7 @@ if __name__ == '__main__':
             # print(f"classification: {classification.shape}, regression: {regression.shape}")
             # print(f"class_idx: {class_idx.shape}, label_x1: {label_x1.shape}, label_y1: {label_y1.shape}, label_x2: {label_x2.shape}, label_y2: {label_y2.shape}")
             
-            classification_loss = classifier_criterion(classification, class_idx)
+            classification_loss = classifier_criterion(classification, class_id)
             regression_loss_x1 = regression_criterion(regression[:, 0], label_x1)
             regression_loss_y1 = regression_criterion(regression[:, 1], label_y1)
             regression_loss_x2 = regression_criterion(regression[:, 2], label_x2)
@@ -273,15 +273,22 @@ if __name__ == '__main__':
             summary_writer.add_scalar('train_loss', loss.item(), train_steps)
             train_steps += 1
 
+            img = img.cpu()
+            class_id = class_id.cpu()
+            label_x1 = label_x1.cpu()
+            label_y1 = label_y1.cpu()
+            label_x2 = label_x2.cpu()
+            label_y2 = label_y2.cpu()
+
         print(f'Epoch {epoch+1} Loss: {losses.avg}')
 
         classifier_regressor.eval()
 
         with torch.no_grad():
             losses = nn_utils.AverageMeter()
-            for i, (img, (class_idx, label)) in enumerate(tqdm(val_loader, desc='Validation')):
+            for i, (img, (class_id, label)) in enumerate(tqdm(val_loader, desc='Validation')):
                 img = img.to(args.device)
-                class_idx = class_idx.to(args.device).long()
+                class_id = class_id.to(args.device).long()
 
                 label_x1, label_y1, label_x2, label_y2 = label.split(1, dim=1)
                 label_x1 = label_x1.to(args.device).squeeze(1)
@@ -291,7 +298,7 @@ if __name__ == '__main__':
 
                 classification, regression = classifier_regressor(img)
 
-                classification_loss = classifier_criterion(classification, class_idx)
+                classification_loss = classifier_criterion(classification, class_id)
                 regression_loss_x1 = regression_criterion(regression[:, 0], label_x1)
                 regression_loss_y1 = regression_criterion(regression[:, 1], label_y1)
                 regression_loss_x2 = regression_criterion(regression[:, 2], label_x2)
@@ -302,6 +309,13 @@ if __name__ == '__main__':
                 loss = classification_loss + regression_loss
 
                 losses.update(loss.item(), img.size(0))
+
+                img = img.cpu()
+                class_id = class_id.cpu()
+                label_x1 = label_x1.cpu()
+                label_y1 = label_y1.cpu()
+                label_x2 = label_x2.cpu()
+                label_y2 = label_y2.cpu()
 
             summary_writer.add_scalar('val_loss', losses.avg, epoch+1)
 
