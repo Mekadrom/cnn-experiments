@@ -141,6 +141,23 @@ class ResNet34(nn.Module):
             nn.Sigmoid()
         )
 
+        self.init_weights(self)
+
+    def init_weights(self, m):
+        print(f"Initializing weights for {m}")
+        if isinstance(m, nn.ModuleList) or isinstance(m, nn.Sequential):
+            for sub_m in m:
+                self.init_weights(sub_m)
+        elif isinstance(m, nn.Conv2d):
+            nn.init.xavier_uniform_(m.weight)
+            nn.init.zeros_(m.bias)
+        elif isinstance(m, nn.Linear):
+            nn.init.xavier_uniform_(m.weight)
+            nn.init.zeros_(m.bias)
+        elif isinstance(m, nn.Module):
+            for child in m.children():
+                self.init_weights(child)
+
     def forward(self, x):
         # hardcoded_features = torch.stack([conv(x) for conv in self.hardcoded_convs], dim=1)
         x = self.initial_conv(x)

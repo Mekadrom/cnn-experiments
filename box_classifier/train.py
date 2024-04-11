@@ -44,10 +44,7 @@ def load_split(data_path, split):
             label_x2 = float(label[3])
             label_y2 = float(label[4])
 
-            img = Image.open(os.path.join(img_dir, img_file_name))
-            img = transforms.ToTensor()(img)
-
-            data.append((img, (torch.LongTensor([class_id]).squeeze(-1), torch.FloatTensor([label_x1, label_y1, label_x2, label_y2]))))
+            data.append((os.path.join(img_dir, img_file_name), (torch.LongTensor([class_id]).squeeze(-1), torch.FloatTensor([label_x1, label_y1, label_x2, label_y2]))))
     return data
 
 try:
@@ -55,12 +52,15 @@ try:
 except:
     fnt = ImageFont.load_default()
 
-def save_image_example(epoch, actual_img, actual_class_id, actual_box_label, model, summary_writer):
+def save_image_example(epoch, actual_img_path, actual_class_id, actual_box_label, model, summary_writer):
     actual_x1, actual_y1, actual_x2, actual_y2 = actual_box_label.split(1, dim=0)
     actual_x1 = actual_x1.squeeze(0).item()
     actual_y1 = actual_y1.squeeze(0).item()
     actual_x2 = actual_x2.squeeze(0).item()
     actual_y2 = actual_y2.squeeze(0).item()
+
+    actual_img = Image.open(actual_img_path)
+    actual_img = transforms.ToTensor()(actual_img)
 
     actual_img = actual_img.to(args.device).unsqueeze(0)
     pred_class_id, pred_regr = model(actual_img)
@@ -137,7 +137,10 @@ def save_conv_filters(epoch, model, summary_writer):
     summary_writer.add_images('conv_pool_4_filters', conv_pool_4_filters, epoch)
     summary_writer.add_images('block_4_filters', block_4_filters, epoch)
 
-def save_conv_outputs(epoch, actual_img, model, summary_writer):
+def save_conv_outputs(epoch, actual_img_path, model, summary_writer):
+    actual_img = Image.open(actual_img_path)
+    actual_img = transforms.ToTensor()(actual_img)
+
     actual_img = actual_img.to(args.device).unsqueeze(0)
 
     x = model.initial_conv[0](actual_img)
@@ -228,16 +231,18 @@ if __name__ == '__main__':
     print(f"model: {classifier_regressor}")
     print(f"total number of model params: {sum(p.numel() for p in classifier_regressor.parameters()):,}")
 
-    actual_img, (actual_class_id, actual_box_label) = random.choice(val_data)
-    save_visualizations(0, actual_img, actual_class_id, actual_box_label, classifier_regressor, summary_writer)
+    actual_img_path, (actual_class_id, actual_box_label) = random.choice(val_data)
+    save_visualizations(0, actual_img_path, actual_class_id, actual_box_label, classifier_regressor, summary_writer)
 
     train_steps = 0
     for epoch in range(args.n_epochs):
         classifier_regressor.train()
         
         losses = nn_utils.AverageMeter()
-        for i, (img, (class_id, label)) in enumerate(tqdm(train_loader, desc='Training')):
-            img = img.to(args.device)
+        for i, (img_paths, (class_id, label)) in enumerate(tqdm(train_loader, desc='Training')):
+            imgs = torch.stack([transforms.ToTensor()(Image.open(img_path)) for img_path in img_paths], dim=0)
+
+            imgs = imgs.to(args.device)
             class_id = class_id.to(args.device).long()
 
             label_x1, label_y1, label_x2, label_y2 = label.split(1, dim=1)
@@ -248,7 +253,7 @@ if __name__ == '__main__':
 
             optimizer.zero_grad()
 
-            classification, regression = classifier_regressor(img)
+            classification, regression = classifier_regressor(imgs)
 
             # print(f"classification: {classification.shape}, regression: {regression.shape}")
             # print(f"class_idx: {class_idx.shape}, label_x1: {label_x1.shape}, label_y1: {label_y1.shape}, label_x2: {label_x2.shape}, label_y2: {label_y2.shape}")
@@ -264,7 +269,7 @@ if __name__ == '__main__':
 
             loss = classification_loss + regression_loss
 
-            losses.update(loss.item(), img.size(0))
+            losses.update(loss.item(), imgs.size(0))
 
             loss.backward()
 
@@ -273,7 +278,7 @@ if __name__ == '__main__':
             summary_writer.add_scalar('train_loss', loss.item(), train_steps)
             train_steps += 1
 
-            img = img.cpu()
+            imgs = imgs.cpu()
             class_id = class_id.cpu()
             label_x1 = label_x1.cpu()
             label_y1 = label_y1.cpu()
@@ -286,8 +291,10 @@ if __name__ == '__main__':
 
         with torch.no_grad():
             losses = nn_utils.AverageMeter()
-            for i, (img, (class_id, label)) in enumerate(tqdm(val_loader, desc='Validation')):
-                img = img.to(args.device)
+            for i, (img_paths, (class_id, label)) in enumerate(tqdm(val_loader, desc='Validation')):
+                imgs = torch.stack([transforms.ToTensor()(Image.open(img_path)) for img_path in img_paths], dim=0)
+
+                imgs = imgs.to(args.device)
                 class_id = class_id.to(args.device).long()
 
                 label_x1, label_y1, label_x2, label_y2 = label.split(1, dim=1)
@@ -296,7 +303,7 @@ if __name__ == '__main__':
                 label_x2 = label_x2.to(args.device).squeeze(1)
                 label_y2 = label_y2.to(args.device).squeeze(1)
 
-                classification, regression = classifier_regressor(img)
+                classification, regression = classifier_regressor(imgs)
 
                 classification_loss = classifier_criterion(classification, class_id)
                 regression_loss_x1 = regression_criterion(regression[:, 0], label_x1)
@@ -308,9 +315,9 @@ if __name__ == '__main__':
 
                 loss = classification_loss + regression_loss
 
-                losses.update(loss.item(), img.size(0))
+                losses.update(loss.item(), imgs.size(0))
 
-                img = img.cpu()
+                imgs = imgs.cpu()
                 class_id = class_id.cpu()
                 label_x1 = label_x1.cpu()
                 label_y1 = label_y1.cpu()
@@ -320,8 +327,8 @@ if __name__ == '__main__':
             summary_writer.add_scalar('val_loss', losses.avg, epoch+1)
 
             if args.visualize_epochs != -1 and (epoch + 1) % args.visualize_epochs == 0:
-                actual_img, (actual_class_id, actual_box_label) = random.choice(val_data)
-                save_visualizations(epoch + 1, actual_img, actual_class_id, actual_box_label, classifier_regressor, summary_writer)
+                actual_img_path, (actual_class_id, actual_box_label) = random.choice(val_data)
+                save_visualizations(epoch + 1, actual_img_path, actual_class_id, actual_box_label, classifier_regressor, summary_writer)
 
         torch.save({'model': classifier_regressor.state_dict(), 'optim': optimizer}, os.path.join(run_dir, f"classifier_regressor.pth"))
 
