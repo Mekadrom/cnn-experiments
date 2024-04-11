@@ -1,4 +1,5 @@
 import sys
+import torch
 import torch.nn as nn
 
 sys.path.append("..")
@@ -36,10 +37,71 @@ class ResNet34(nn.Module):
             ]
 
             return nn.Sequential(*layers)
+        
+        # sobel = nn.Conv2d(3, 2, 3, 1, 1, bias=False)
+        # sobel.weight.data = nn.Parameter(torch.FloatTensor([[
+        #     [[-1,  0,  1], 
+        #      [-2,  0,  2],
+        #      [-1,  0,  1]], 
+        #     [[-1, -2, -1], 
+        #      [ 0,  0,  0], 
+        #      [ 1,  2,  1]]
+        # ]]))
+        # sobel.weight.requires_grad = False
+
+        # scharr = nn.Conv2d(3, 2, 3, 1, 1, bias=False)
+        # scharr.weight.data = nn.Parameter(torch.FloatTensor([[
+        #     [[-3,  0,  3], 
+        #      [-10, 0, 10],
+        #      [-3,  0,  3]], 
+        #     [[-3, -10, -3], 
+        #      [ 0,  0,  0], 
+        #      [ 3,  10,  3]]
+        # ]]))
+        # scharr.weight.requires_grad = False
+
+        # prewitt = nn.Conv2d(3, 2, 3, 1, 1, bias=False)
+        # prewitt.weight.data = nn.Parameter(torch.FloatTensor([[
+        #     [[-1,  0,  1], 
+        #      [-1,  0,  1],
+        #      [-1,  0,  1]], 
+        #     [[-1, -1, -1], 
+        #      [ 0,  0,  0], 
+        #      [ 1,  1,  1]]
+        # ]]))
+        # prewitt.weight.requires_grad = False
+
+        # laplacian = nn.Conv2d(3, 2, 3, 1, 1, bias=False)
+        # laplacian.weight.data = nn.Parameter(torch.FloatTensor([[
+        #     [[ 0,  1,  0], 
+        #      [ 1, -4,  1],
+        #      [ 0,  1,  0]],
+        #     [[-1, -1, -1],
+        #      [-1,  8, -1],
+        #      [-1, -1, -1]]
+        # ]]))
+        # laplacian.weight.requires_grad = False
+
+        # gaussian = nn.Conv2d(3, 1, 3, 1, 1, bias=False)
+        # gaussian.weight.data = nn.Parameter(torch.FloatTensor([[
+        #     [[1, 2, 1], 
+        #      [2, 4, 2],
+        #      [1, 2, 1]]
+        # ]]))
+        # gaussian.weight.requires_grad = False
+
+        # self.hardcoded_convs = nn.ModuleList([
+        #     sobel,
+        #     scharr,
+        #     prewitt,
+        #     laplacian,
+        #     gaussian
+        # ])
+
+        # self.initial_conv = nn.Conv2d(3, 64, 7, 2, (7-1) // 2) # 112 -> 112
 
         self.initial_conv = nn.Sequential(*[
-            create_conv_block(3, 64, kernel_size=7, stride=2, pooling=False), # 224 -> 112
-            nn.Conv2d(3, 64, 7, 2, (7-1) // 2), # 112 -> 112
+            nn.Conv2d(3, 64, 7, 2, (7-1) // 2), # 224 -> 112
             self.activation_function,
             nn.BatchNorm2d(64),
             nn.MaxPool2d(kernel_size=3, stride=2, padding=1) # 112 -> 56
@@ -80,7 +142,13 @@ class ResNet34(nn.Module):
         )
 
     def forward(self, x):
+        # hardcoded_features = torch.stack([conv(x) for conv in self.hardcoded_convs], dim=1)
         x = self.initial_conv(x)
+
+        # x = torch.cat([x, hardcoded_features], dim=1)
+
+        # x = self.initial_conv(x) # expects 64 features so goes after concat
+
         # residual = x
         for conv_block in self.convs:
             if isinstance(conv_block, nn.ModuleList):

@@ -10,17 +10,37 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 
-def pad_to_size(target_size):
-    def pad(img):
-        width, height = img.size
-        pad_width = target_size[1] - width
-        pad_height = target_size[0] - height
-        padding = (pad_width // 2, pad_height // 2, (pad_width + 1) // 2, (pad_height + 1) // 2)
-        return torchvision.transforms.functional.pad(img, padding, fill=0, padding_mode='constant'), pad_width // 2, pad_height // 2
-    return pad
+def ensure_size(img, target_size):
+    # width, height = img.size
+    # pad_width = target_size[1] - width
+    # pad_height = target_size[0] - height
+    # padding = (pad_width // 2, pad_height // 2, (pad_width + 1) // 2, (pad_height + 1) // 2)
+    # return torchvision.transforms.functional.pad(img, padding, fill=0, padding_mode='constant'), pad_width // 2, pad_height // 2
+
+    orig_width, orig_height = img.size
+
+    if orig_width > orig_height:
+        scaled_width = target_size[0]
+        scaled_height = int(orig_height * scaled_width / orig_width)
+    else:
+        scaled_height = target_size[1]
+        scaled_width = int(orig_width * scaled_height / orig_height)
+
+    scale_x = scaled_width / orig_width
+    scale_y = scaled_height / orig_height
+
+    # scale to scaled_width x scaled_height
+    img = img.resize((scaled_width, scaled_height))
+
+    # pad to target_size
+    # one of the pads will always be 0
+    pad_width = target_size[0] - scaled_width
+    pad_height = target_size[1] - scaled_height
+    padding = (pad_width // 2, pad_height // 2, (pad_width + 1) // 2, (pad_height + 1) // 2)
+
+    return torchvision.transforms.functional.pad(img, padding, fill=0, padding_mode='constant'), scale_x, scale_y, pad_width // 2, pad_height // 2
 
 transform = transforms.Compose([
-    transforms.Resize((224, 224)),
     # makes sure img is RGB
     transforms.Lambda(lambda img: img.convert('RGB')),
     transforms.ToTensor(),
@@ -40,34 +60,20 @@ def process_split(data_path, output_data_path, split, img_file_names):
             class_name = label[0]
             class_id = class_names.index(class_name)
 
-            label_x1 = float(label[1])
-            label_y1 = float(label[2])
-            label_x2 = float(label[3])
-            label_y2 = float(label[4])
-
             img = Image.open(os.path.join(data_path, split, img_file_name))
 
-            img, pad_width, pad_height = pad_to_size((1024, 1024))(img)
+            target_size = (224, 224)
 
-            pad_height = min(1024, max(0, pad_height))
-            pad_width = min(1024, max(0, pad_width))
+            # scale_x = target_size[0] / img.size[0]
+            # scale_y = target_size[1] / img.size[1]
 
-            label_x1 += pad_width
-            label_y1 += pad_height
-            label_x2 += pad_width
-            label_y2 += pad_height
-
+            img, scale_x, scale_y, pad_width, pad_height = ensure_size(img, target_size)
             img = transform(img)
 
-            label_x1 /= 4.0
-            label_y1 /= 4.0
-            label_x2 /= 4.0
-            label_y2 /= 4.0
-
-            label_x1 /= 256.0
-            label_y1 /= 192.0
-            label_x2 /= 256.0
-            label_y2 /= 192.0
+            label_x1 = ((float(label[1]) * scale_x) + pad_width) / target_size[0]
+            label_y1 = ((float(label[2]) * scale_y) + pad_height) / target_size[1]
+            label_x2 = ((float(label[3]) * scale_x) + pad_width) / target_size[0]
+            label_y2 = ((float(label[4]) * scale_y) + pad_height) / target_size[1]
 
             label = torch.FloatTensor([label_x1, label_y1, label_x2, label_y2])
             label = torch.clamp(label, 0.0, 1.0) # clamp to [0, 1]
@@ -100,6 +106,6 @@ if __name__ == '__main__':
 
     os.makedirs(args.output_data_path, exist_ok=True)
 
-    preprocess_set(args.data_path, args.output_data_path, 'train')
     preprocess_set(args.data_path, args.output_data_path, 'test')
+    preprocess_set(args.data_path, args.output_data_path, 'train')
     preprocess_set(args.data_path, args.output_data_path, 'validation')
