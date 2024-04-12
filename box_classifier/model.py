@@ -136,10 +136,10 @@ class ResNet34(nn.Module):
             nn.Softmax(dim=1)
         )
 
-        self.box_regressor = nn.Sequential(
-            nn.Linear(interp1, 4),
-            nn.Sigmoid()
-        )
+        # self.box_regressor = nn.Sequential(
+        #     nn.Linear(interp1, 4),
+        #     nn.Sigmoid()
+        # )
 
         self.init_weights(self)
 
@@ -178,4 +178,4 @@ class ResNet34(nn.Module):
         x = self.avg_pool(x)
         x = self.flatten(x)
         x = self.sequential(x)
-        return self.classifier(x), self.box_regressor(x)
+        return self.classifier(x)#, self.box_regressor(x)

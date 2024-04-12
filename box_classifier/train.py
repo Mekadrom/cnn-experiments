@@ -19,7 +19,9 @@ import nn_utils
 class_names = set()
 
 with open(os.path.join('..', 'classes.txt'), 'r') as f:
-    class_names = [x.strip() for x in f.readlines()]
+    class_names = [x.strip().lower().replace(' ', '_') for x in f.readlines()]
+
+print(f"classes: {class_names}")
 
 def load_split(data_path, split):
     global class_names
@@ -38,13 +40,13 @@ def load_split(data_path, split):
             # label line consists of (class_id, x1, y1, x1, y1)
             label = label.split(',')
 
-            class_id = int(label[0])
-            label_x1 = float(label[1])
-            label_y1 = float(label[2])
-            label_x2 = float(label[3])
-            label_y2 = float(label[4])
+            # class_id = int(label[0])
+            # label_x1 = float(label[1])
+            # label_y1 = float(label[2])
+            # label_x2 = float(label[3])
+            # label_y2 = float(label[4])
 
-            data.append((os.path.join(img_dir, img_file_name), (torch.LongTensor([class_id]).squeeze(-1), torch.FloatTensor([label_x1, label_y1, label_x2, label_y2]))))
+            data.append(os.path.join(img_dir, img_file_name)) #, (torch.LongTensor([class_id]).squeeze(-1), torch.FloatTensor([label_x1, label_y1, label_x2, label_y2]))))
     return data
 
 try:
@@ -53,47 +55,51 @@ except:
     fnt = ImageFont.load_default()
 
 def save_image_example(epoch, actual_img_path, actual_class_id, actual_box_label, model, summary_writer):
-    actual_x1, actual_y1, actual_x2, actual_y2 = actual_box_label.split(1, dim=0)
-    actual_x1 = actual_x1.squeeze(0).item()
-    actual_y1 = actual_y1.squeeze(0).item()
-    actual_x2 = actual_x2.squeeze(0).item()
-    actual_y2 = actual_y2.squeeze(0).item()
+    # actual_x1, actual_y1, actual_x2, actual_y2 = actual_box_label.split(1, dim=0)
+    # actual_x1 = actual_x1.squeeze(0).item()
+    # actual_y1 = actual_y1.squeeze(0).item()
+    # actual_x2 = actual_x2.squeeze(0).item()
+    # actual_y2 = actual_y2.squeeze(0).item()
 
     actual_img = Image.open(actual_img_path)
     actual_img = transforms.ToTensor()(actual_img)
 
     actual_img = actual_img.to(args.device).unsqueeze(0)
-    pred_class_id, pred_regr = model(actual_img)
+    # pred_class_id, pred_regr = model(actual_img)
+    pred_class_id = model(actual_img)
     pred_class_id = torch.argmax(pred_class_id, dim=1).cpu().detach()
     pred_class_id = class_names[pred_class_id[0].item()]
 
-    pred_regr = pred_regr.squeeze(0)
+    # pred_regr = pred_regr.squeeze(0)
 
     # draw correct bounding box and label on image in green
     # draw predicted bounding box and label on image in red
 
-    actual_x1 = int(actual_x1 * 224)
-    actual_y1 = int(actual_y1 * 224)
-    actual_x2 = int(actual_x2 * 224)
-    actual_y2 = int(actual_y2 * 224)
+    # actual_x1 = int(actual_x1 * 224)
+    # actual_y1 = int(actual_y1 * 224)
+    # actual_x2 = int(actual_x2 * 224)
+    # actual_y2 = int(actual_y2 * 224)
 
-    pred_regr[0] = int(pred_regr[0] * 224)
-    pred_regr[1] = int(pred_regr[1] * 224)
-    pred_regr[2] = int(pred_regr[2] * 224)
-    pred_regr[3] = int(pred_regr[3] * 224)
+    # pred_regr[0] = int(pred_regr[0] * 224)
+    # pred_regr[1] = int(pred_regr[1] * 224)
+    # pred_regr[2] = int(pred_regr[2] * 224)
+    # pred_regr[3] = int(pred_regr[3] * 224)
 
-    pred_x1 = int(min(pred_regr[0], pred_regr[2]))
-    pred_y1 = int(min(pred_regr[1], pred_regr[3]))
-    pred_x2 = int(max(pred_regr[0], pred_regr[2]))
-    pred_y2 = int(max(pred_regr[1], pred_regr[3]))
+    # pred_x1 = int(min(pred_regr[0], pred_regr[2]))
+    # pred_y1 = int(min(pred_regr[1], pred_regr[3]))
+    # pred_x2 = int(max(pred_regr[0], pred_regr[2]))
+    # pred_y2 = int(max(pred_regr[1], pred_regr[3]))
 
     # save image to tensorboard
     img_from_tensor = transforms.ToPILImage()(actual_img[0])
-    ImageDraw.Draw(img_from_tensor).rectangle([(actual_x1, actual_y1), (actual_x2, actual_y2)], outline='green', width=1)
-    ImageDraw.Draw(img_from_tensor).rectangle([(pred_x1, pred_y1), (pred_x2, pred_y2)], outline='red', width=1)
+    # ImageDraw.Draw(img_from_tensor).rectangle([(actual_x1, actual_y1), (actual_x2, actual_y2)], outline='green', width=1)
+    # ImageDraw.Draw(img_from_tensor).rectangle([(pred_x1, pred_y1), (pred_x2, pred_y2)], outline='red', width=1)
 
-    ImageDraw.Draw(img_from_tensor).text((actual_x1, actual_y2), class_names[actual_class_id], font=fnt, fill='green')
-    ImageDraw.Draw(img_from_tensor).text((pred_x1, pred_y1), pred_class_id, font=fnt, fill='red')
+    # ImageDraw.Draw(img_from_tensor).text((actual_x1, actual_y2), class_names[actual_class_id], font=fnt, fill='green')
+    # ImageDraw.Draw(img_from_tensor).text((pred_x1, pred_y1), pred_class_id, font=fnt, fill='red')
+
+    ImageDraw.Draw(img_from_tensor).text((0, 0), f"Actual: {class_names[actual_class_id]}", font=fnt, fill='green')
+    ImageDraw.Draw(img_from_tensor).text((0, 10), f"Predicted: {pred_class_id}", font=fnt, fill='red')
 
     img = transforms.ToTensor()(img_from_tensor).unsqueeze(0)
     img = nn.functional.interpolate(img, scale_factor=2, mode='nearest').squeeze(0)
@@ -226,48 +232,53 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(classifier_regressor.parameters(), lr=args.lr)
 
     classifier_criterion = torch.nn.CrossEntropyLoss()
-    regression_criterion = torch.nn.MSELoss()
+    # regression_criterion = torch.nn.MSELoss()
 
     print(f"model: {classifier_regressor}")
     print(f"total number of model params: {sum(p.numel() for p in classifier_regressor.parameters()):,}")
 
-    actual_img_path, (actual_class_id, actual_box_label) = random.choice(val_data)
-    save_visualizations(0, actual_img_path, actual_class_id, actual_box_label, classifier_regressor, summary_writer)
+    # actual_img_path, (actual_class_id, actual_box_label) = random.choice(val_data)
+    actual_img_path = random.choice(val_data)
+    actual_class_id = torch.LongTensor([class_names.index('_'.join(os.path.basename(actual_img_path).split('_')[:-1]))]).to(args.device)
+    save_visualizations(0, actual_img_path, actual_class_id, None, classifier_regressor, summary_writer)
 
     train_steps = 0
     for epoch in range(args.n_epochs):
         classifier_regressor.train()
         
         losses = nn_utils.AverageMeter()
-        for i, (img_paths, (class_id, label)) in enumerate(tqdm(train_loader, desc='Training')):
+        # for i, (img_paths, (class_id, label)) in enumerate(tqdm(train_loader, desc='Training')):
+        for i, img_paths in enumerate(tqdm(train_loader, desc='Training')):
             imgs = torch.stack([transforms.ToTensor()(Image.open(img_path)) for img_path in img_paths], dim=0)
 
             imgs = imgs.to(args.device)
-            class_id = class_id.to(args.device).long()
+            # class_id = class_id.to(args.device).long()
+            class_ids = torch.LongTensor([class_names.index('_'.join(os.path.basename(img_path).split('_')[:-1])) for img_path in img_paths]).to(args.device)
 
-            label_x1, label_y1, label_x2, label_y2 = label.split(1, dim=1)
-            label_x1 = label_x1.to(args.device).squeeze(1)
-            label_y1 = label_y1.to(args.device).squeeze(1)
-            label_x2 = label_x2.to(args.device).squeeze(1)
-            label_y2 = label_y2.to(args.device).squeeze(1)
+            # label_x1, label_y1, label_x2, label_y2 = label.split(1, dim=1)
+            # label_x1 = label_x1.to(args.device).squeeze(1)
+            # label_y1 = label_y1.to(args.device).squeeze(1)
+            # label_x2 = label_x2.to(args.device).squeeze(1)
+            # label_y2 = label_y2.to(args.device).squeeze(1)
 
             optimizer.zero_grad()
 
-            classification, regression = classifier_regressor(imgs)
+            # classification, regression = classifier_regressor(imgs)
+            classification = classifier_regressor(imgs)
 
             # print(f"classification: {classification.shape}, regression: {regression.shape}")
             # print(f"class_idx: {class_idx.shape}, label_x1: {label_x1.shape}, label_y1: {label_y1.shape}, label_x2: {label_x2.shape}, label_y2: {label_y2.shape}")
             
-            classification_loss = classifier_criterion(classification, class_id)
-            regression_loss_x1 = regression_criterion(regression[:, 0], label_x1)
-            regression_loss_y1 = regression_criterion(regression[:, 1], label_y1)
-            regression_loss_x2 = regression_criterion(regression[:, 2], label_x2)
-            regression_loss_y2 = regression_criterion(regression[:, 3], label_y2)
+            classification_loss = classifier_criterion(classification, class_ids)
+            # regression_loss_x1 = regression_criterion(regression[:, 0], label_x1)
+            # regression_loss_y1 = regression_criterion(regression[:, 1], label_y1)
+            # regression_loss_x2 = regression_criterion(regression[:, 2], label_x2)
+            # regression_loss_y2 = regression_criterion(regression[:, 3], label_y2)
 
-            regression_loss = regression_loss_x1 + regression_loss_y1 + regression_loss_x2 + regression_loss_y2
+            # regression_loss = regression_loss_x1 + regression_loss_y1 + regression_loss_x2 + regression_loss_y2
 
 
-            loss = classification_loss + regression_loss
+            loss = classification_loss# + regression_loss
 
             losses.update(loss.item(), imgs.size(0))
 
@@ -279,11 +290,13 @@ if __name__ == '__main__':
             train_steps += 1
 
             imgs = imgs.cpu()
-            class_id = class_id.cpu()
-            label_x1 = label_x1.cpu()
-            label_y1 = label_y1.cpu()
-            label_x2 = label_x2.cpu()
-            label_y2 = label_y2.cpu()
+            # class_id = class_id.cpu()
+            # label_x1 = label_x1.cpu()
+            # label_y1 = label_y1.cpu()
+            # label_x2 = label_x2.cpu()
+            # label_y2 = label_y2.cpu()
+
+            del imgs
 
         print(f'Epoch {epoch+1} Loss: {losses.avg}')
 
@@ -291,44 +304,51 @@ if __name__ == '__main__':
 
         with torch.no_grad():
             losses = nn_utils.AverageMeter()
-            for i, (img_paths, (class_id, label)) in enumerate(tqdm(val_loader, desc='Validation')):
+            # for i, (img_paths, (class_id, label)) in enumerate(tqdm(val_loader, desc='Validation')):
+            for i, img_paths in enumerate(tqdm(val_loader, desc='Validation')):
                 imgs = torch.stack([transforms.ToTensor()(Image.open(img_path)) for img_path in img_paths], dim=0)
 
                 imgs = imgs.to(args.device)
-                class_id = class_id.to(args.device).long()
+                # class_ids = class_id.to(args.device).long()
 
-                label_x1, label_y1, label_x2, label_y2 = label.split(1, dim=1)
-                label_x1 = label_x1.to(args.device).squeeze(1)
-                label_y1 = label_y1.to(args.device).squeeze(1)
-                label_x2 = label_x2.to(args.device).squeeze(1)
-                label_y2 = label_y2.to(args.device).squeeze(1)
+                class_ids = torch.LongTensor([class_names.index('_'.join(os.path.basename(img_path).split('_')[:-1])) for img_path in img_paths]).to(args.device)
 
-                classification, regression = classifier_regressor(imgs)
+                # label_x1, label_y1, label_x2, label_y2 = label.split(1, dim=1)
+                # label_x1 = label_x1.to(args.device).squeeze(1)
+                # label_y1 = label_y1.to(args.device).squeeze(1)
+                # label_x2 = label_x2.to(args.device).squeeze(1)
+                # label_y2 = label_y2.to(args.device).squeeze(1)
 
-                classification_loss = classifier_criterion(classification, class_id)
-                regression_loss_x1 = regression_criterion(regression[:, 0], label_x1)
-                regression_loss_y1 = regression_criterion(regression[:, 1], label_y1)
-                regression_loss_x2 = regression_criterion(regression[:, 2], label_x2)
-                regression_loss_y2 = regression_criterion(regression[:, 3], label_y2)
+                # classification, regression = classifier_regressor(imgs)
+                classification = classifier_regressor(imgs)
 
-                regression_loss = regression_loss_x1 + regression_loss_y1 + regression_loss_x2 + regression_loss_y2
+                classification_loss = classifier_criterion(classification, class_ids)
+                # regression_loss_x1 = regression_criterion(regression[:, 0], label_x1)
+                # regression_loss_y1 = regression_criterion(regression[:, 1], label_y1)
+                # regression_loss_x2 = regression_criterion(regression[:, 2], label_x2)
+                # regression_loss_y2 = regression_criterion(regression[:, 3], label_y2)
 
-                loss = classification_loss + regression_loss
+                # regression_loss = regression_loss_x1 + regression_loss_y1 + regression_loss_x2 + regression_loss_y2
+
+                loss = classification_loss# + regression_loss
 
                 losses.update(loss.item(), imgs.size(0))
 
                 imgs = imgs.cpu()
-                class_id = class_id.cpu()
-                label_x1 = label_x1.cpu()
-                label_y1 = label_y1.cpu()
-                label_x2 = label_x2.cpu()
-                label_y2 = label_y2.cpu()
+                # class_id = class_id.cpu()
+                # label_x1 = label_x1.cpu()
+                # label_y1 = label_y1.cpu()
+                # label_x2 = label_x2.cpu()
+                # label_y2 = label_y2.cpu()
+
+                del imgs
 
             summary_writer.add_scalar('val_loss', losses.avg, epoch+1)
 
             if args.visualize_epochs != -1 and (epoch + 1) % args.visualize_epochs == 0:
-                actual_img_path, (actual_class_id, actual_box_label) = random.choice(val_data)
-                save_visualizations(epoch + 1, actual_img_path, actual_class_id, actual_box_label, classifier_regressor, summary_writer)
+                # actual_img_path, (actual_class_id, actual_box_label) = random.choice(val_data)
+                actual_img_path = random.choice(val_data)
+                save_visualizations(epoch + 1, actual_img_path, actual_class_id, None, classifier_regressor, summary_writer)
 
         torch.save({'model': classifier_regressor.state_dict(), 'optim': optimizer}, os.path.join(run_dir, f"classifier_regressor.pth"))
 
